@@ -77,6 +77,29 @@ To bypass in a genuine emergency (record the reason in the PR):
 git push --no-verify
 ```
 
+## Pre-commit Hook
+
+A Git pre-commit hook at `.husky/pre-commit` runs `lint-staged` **and** runs
+`cargo clippy` on any Rust files that are staged for commit.  This catches
+lint regressions before a commit is recorded, rather than only at push time.
+
+The hook checks only the contract crate:
+
+```bash
+cargo clippy \
+  --locked \
+  --manifest-path contracts/stellar-save/Cargo.toml \
+  --all-targets \
+  -- -D warnings
+```
+
+It is triggered automatically by Husky whenever at least one `*.rs` file is
+staged. To bypass in a genuine emergency (record the reason in the PR):
+
+```bash
+git commit --no-verify
+```
+
 ---
 
 ## Exception Process
@@ -117,7 +140,15 @@ must confirm the justification before merging.
 
 | Lint | Location | Justification | Added |
 |------|----------|---------------|-------|
-| *(none)* | — | — | — |
+| `dead_code` | `src/lib.rs` (crate-level) | Test-helper modules (`admin_actions_tests`, `cei_tests`, etc.) are declared as unconditional `pub mod` entries. The Soroban testutils SDK requires contract types to be compiled in the same crate as tests, making test-only items appear dead to non-test builds. | #1944 |
+| `unused_imports` | `src/lib.rs` (crate-level) | Re-export blocks and test modules pull in names consumed only under testutils compilation. Removing them would break test builds. | #1944 |
+| `clippy::module_inception` | `src/lib.rs` (crate-level) | The `contract` module defines `StellarSaveContract`, mirroring the crate name. This is the canonical Soroban layout and cannot be renamed without breaking the generated `StellarSaveContractClient`. | #1944 |
+| `clippy::too_many_arguments` | `src/lib.rs` (crate-level) | Soroban contract entry-points must accept `Env` plus all domain parameters in a single function signature; there is no way to group them differently without violating the ABI. | #1944 |
+| `clippy::type_complexity` | `src/lib.rs` (crate-level) | Complex return types (e.g. `Result<Vec<(Address, bool)>, StellarSaveError>`) are intrinsic to the contract query API and cannot be simplified without introducing new wrapper types that would change the on-chain ABI. | #1944 |
+| `clippy::comparison_chain` | `src/lib.rs` (crate-level) | The Soroban SDK `Vec` does not implement `Ord`, so `if a < b … else if a > b` chains are the only available comparison pattern in some helpers. | #1944 |
+| `clippy::too_many_lines` | `src/contract.rs` (file-level) | The `contractimpl` block is intentionally large; each method is a thin façade. Splitting into multiple impl blocks does not improve readability or correctness. | #1944 |
+| `clippy::needless_pass_by_ref_mut` | `src/contract.rs` (file-level) | Some generated contract entry-points accept `&mut Env` via macro expansion; these signatures cannot be changed. | #1944 |
+| `unused_variables` | `src/contract.rs` (file-level) | Pure-query methods where `env` is required by the ABI but the function body delegates immediately to a helper may leave `env` unused in the generated expansion. | #1944 |
 
 ---
 

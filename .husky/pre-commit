@@ -1,1 +1,15 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
 npx lint-staged
+
+# Run cargo clippy on changed Rust files in contracts/
+CHANGED_RS=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.rs$' || true)
+if [ -n "$CHANGED_RS" ]; then
+  echo "Running cargo clippy on changed Rust files..."
+  cargo clippy \
+    --locked \
+    --manifest-path contracts/stellar-save/Cargo.toml \
+    --all-targets \
+    -- -D warnings || exit 1
+fi

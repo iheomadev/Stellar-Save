@@ -2,6 +2,20 @@
 //!
 //! All public methods delegate to the domain modules. This file is kept as
 //! a thin façade – no business logic should be added here.
+//
+// ── Per-file Clippy exceptions (see docs/clippy-policy.md) ───────────────────
+//
+// clippy::too_many_lines: The contractimpl block is intentionally large; each
+// method is a thin façade and splitting into multiple impl blocks does not
+// improve readability or correctness.
+//
+// clippy::needless_pass_by_ref_mut: Some generated contract entry-points accept
+// `&mut Env` via macro expansion; we cannot change those signatures.
+//
+// unused_variables: Pure-query methods where `env` is required by the ABI but
+// the function body delegates immediately to a helper may leave `env` unused in
+// the generated expansion.
+#![allow(clippy::too_many_lines, clippy::needless_pass_by_ref_mut, unused_variables)]
 use core::cmp;
 use crate::contribution::{ContributionPage, ContributionRecord};
 use crate::error::StellarSaveError;

@@ -1,4 +1,46 @@
 #![no_std]
+// ── Clippy policy (see docs/clippy-policy.md) ─────────────────────────────────
+//
+// The attributes below suppress lint categories that routinely fire in Soroban
+// smart-contract crates for justified, unavoidable reasons.  Each category has
+// an inline comment explaining why it is allowed at the crate level rather than
+// being fixed item-by-item.
+//
+// Lint: dead_code
+//   Test-helper modules (admin_actions_tests, cei_tests, gas_benchmark, …) are
+//   declared as unconditional `pub mod` entries rather than `#[cfg(test)] mod`
+//   because the Soroban testutils SDK requires the contract types to be compiled
+//   in the same crate as the tests.  This means items used only in test code
+//   appear "dead" to the non-test build.
+#![allow(dead_code)]
+//
+// Lint: unused_imports
+//   Re-export blocks and test modules pull in names that are consumed only under
+//   testutils compilation.  Removing them would break test builds.
+#![allow(unused_imports)]
+//
+// Lint: clippy::module_inception
+//   The `contract` module defines `StellarSaveContract`, mirroring the crate
+//   name.  This is the canonical Soroban contract layout and cannot be renamed
+//   without breaking the generated `StellarSaveContractClient`.
+#![allow(clippy::module_inception)]
+//
+// Lint: clippy::too_many_arguments
+//   Soroban contract entry-points must accept `Env` plus all domain parameters
+//   in a single function signature; there is no way to group them differently
+//   without violating the ABI.
+#![allow(clippy::too_many_arguments)]
+//
+// Lint: clippy::type_complexity
+//   Complex return types (e.g. `Result<Vec<(Address, bool)>, StellarSaveError>`)
+//   are intrinsic to the contract query API and cannot be simplified without
+//   introducing new wrapper types that would change the on-chain ABI.
+#![allow(clippy::type_complexity)]
+//
+// Lint: clippy::comparison_chain
+//   The Soroban SDK `Vec` does not implement `Ord`, so `if a < b … else if a > b`
+//   chains are the only available comparison pattern in some helpers.
+#![allow(clippy::comparison_chain)]
 
 //! # Stellar-Save Smart Contract
 //!
